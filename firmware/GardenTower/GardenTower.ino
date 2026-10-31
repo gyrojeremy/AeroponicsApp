@@ -65,6 +65,13 @@ uint32_t nextDoseCheckMs = 60000;  // first auto check a minute after boot
 // Networking
 uint32_t lastMqttAttemptMs = 0;
 uint32_t lastStateMs = 0;
+bool stateDirty = false;          // something visible changed; report it soon
+
+// Readings are sent every 10 s, and within half a second of anything changing
+// (mist on/off, pump on/off, a command). That keeps the tower to roughly
+// 250 MB a month, well inside a free broker's 1 GB allowance.
+constexpr uint32_t STATE_EVERY_MS = 10000;
+constexpr uint32_t STATE_SOON_MS = 500;
 uint32_t lastLoopMs = 0;
 bool wasWifiConnected = false;
 
@@ -237,6 +244,7 @@ void startMist(uint32_t now, double seconds) {
   lastMistEpochMs = epochMs();
   nextMistAtMs = now + (uint32_t)((seconds + plan.offSec) * 1000);
   publishEvent("mist", "", -1, NAN, seconds);
+  stateDirty = true;
 }
 
 bool pressureOkForMist() {
@@ -248,6 +256,7 @@ void updateMist(uint32_t now) {
   if (valveOpen && reached(now, valveCloseAtMs)) {
     valveOpen = false;
     setValve(false);
+    stateDirty = true;
   }
   if (pausedUntilEpochMs && reached(now, pausedUntilMs)) {
     pausedUntilEpochMs = 0;
@@ -276,6 +285,7 @@ void updatePump(uint32_t now) {
     pumpOn = want;
     if (pumpOn) pumpStartMs = now;
     setPump(pumpOn);
+    stateDirty = true;
   }
 }
 
@@ -492,7 +502,9 @@ void loop() {
   updateDosing(now);
   maintainNetwork(now);
 
-  if (now - lastStateMs >= 2000 && clockValid()) {
+  uint32_t since = now - lastStateMs;
+  if (clockValid() && (since >= STATE_EVERY_MS || (stateDirty && since >= STATE_SOON_MS))) {
+    stateDirty = false;
     lastStateMs = now;
     publishState();
   }

@@ -6,9 +6,10 @@
 #define WIFI_SSID     "your-wifi-name"
 #define WIFI_PASSWORD "your-wifi-password"
 
-// Your MQTT broker. For HiveMQ Cloud the host looks like
-// "abc123def456.s1.eu.hivemq.cloud" and the TLS port is 8883.
-#define MQTT_HOST     "your-cluster.s1.eu.hivemq.cloud"
+// Your MQTT broker. For EMQX Cloud Serverless, copy the "Address" from the
+// deployment's Overview page; it looks like "a1b2c3d4.ala.us-east-1.emqxsl.com".
+// The TLS port is 8883.
+#define MQTT_HOST     "your-deployment.emqxsl.com"
 #define MQTT_PORT     8883
 #define MQTT_USER     "tower"
 #define MQTT_PASSWORD "your-tower-password"

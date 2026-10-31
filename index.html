@@ -246,8 +246,8 @@
         <label><input type="radio" name="conn" value="mqtt" id="conn-mqtt"><span>My tower (MQTT)</span></label>
       </div>
       <div id="mqttFields" class="stack">
-        <p class="hint">Your ESP32 and this page both connect to an MQTT broker. Use the broker's secure WebSocket address, which usually ends in <code>:8884/mqtt</code>.</p>
-        <label class="field" for="brokerUrl">Broker address <input type="url" id="brokerUrl" placeholder="wss://xxxxxxxx.s1.eu.hivemq.cloud:8884/mqtt" autocomplete="off" spellcheck="false"></label>
+        <p class="hint">Your ESP32 and this page both connect to an MQTT broker. Use the broker's secure WebSocket address. For EMQX Cloud it's <code>wss://</code>, your deployment address, then <code>:8084/mqtt</code>.</p>
+        <label class="field" for="brokerUrl">Broker address <input type="url" id="brokerUrl" placeholder="wss://xxxxxxxx.ala.us-east-1.emqxsl.com:8084/mqtt" autocomplete="off" spellcheck="false"></label>
         <div class="row">
           <label class="field" for="brokerUser">Username <input type="text" id="brokerUser" autocomplete="username" spellcheck="false"></label>
           <label class="field" for="brokerPass">Password <input type="password" id="brokerPass" autocomplete="current-password"></label>

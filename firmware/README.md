@@ -8,17 +8,20 @@ It works on a bare board straight away: every sensor is simulated until you wire
 
 - ESP32 DevKit V1 and a USB cable that carries data (some are charge-only)
 - Arduino IDE 2
-- A free MQTT broker account (steps below)
+- A free EMQX Cloud account (steps below)
 
-## 1. Create a free MQTT broker (HiveMQ Cloud)
+## 1. Create a free MQTT broker (EMQX Cloud)
 
-1. Sign up at <https://console.hivemq.cloud> and create a **Serverless** cluster (free).
-2. Open the cluster's **Overview** and note the **Cluster URL**, something like `abc123def456.s1.eu.hivemq.cloud`.
-3. Go to **Access Management** and add two credentials with *Publish and Subscribe* permission:
+EMQX Cloud Serverless is free for good with no credit card. Its monthly allowance is 1 million connection-minutes and 1 GB of data; one tower uses about 5% and 25% of those.
+
+1. Sign up at <https://accounts.emqx.com/signup> and log in to the EMQX Cloud console.
+2. Create a new **Serverless** deployment. Pick the region closest to you and set the **spend limit to 0**, so it only ever uses the free allowance and can never charge you.
+3. When it's running, open it. The **Overview** page shows the **Address** (something like `a1b2c3d4.ala.us-east-1.emqxsl.com`) and the ports: **8883** for MQTT over TLS and **8084** for WebSocket over TLS.
+4. Go to **Access Control → Client Authentication** and add two username/password pairs:
    - `tower` with a strong password, used by the ESP32
    - `dashboard` with a different password, used by the web app
 
-The ESP32 connects on port **8883**. The dashboard connects with `wss://<cluster-url>:8884/mqtt`.
+The ESP32 connects to the Address on port **8883**. The dashboard connects with `wss://<Address>:8084/mqtt`.
 
 ## 2. Set up the Arduino IDE
 
@@ -34,7 +37,7 @@ The ESP32 connects on port **8883**. The dashboard connects with `wss://<cluster
 Copy `secrets.example.h` to a new file called **`secrets.h`** in the same folder, and fill in:
 
 - your Wi-Fi name and password (the ESP32 only works on **2.4 GHz** Wi-Fi)
-- the HiveMQ cluster URL and the `tower` username and password
+- the EMQX deployment Address and the `tower` username and password
 - the tower ID, `tower1` unless you change it in the dashboard too
 
 `secrets.h` is excluded from Git, so your passwords stay off GitHub.
@@ -50,7 +53,7 @@ Garden Tower 0.1.0
 Some sensors are simulated (see hardware.h). The blue LED shows the mist valve.
 [wifi] connected, IP 192.168.1.42, signal -58 dBm
 [event] mist
-[mqtt] connecting to abc123def456.s1.eu.hivemq.cloud:8883 ...
+[mqtt] connecting to a1b2c3d4.ala.us-east-1.emqxsl.com:8883 ...
 [mqtt] connected
 ```
 
@@ -60,7 +63,7 @@ The first mist happens 10 seconds after boot. The LED comes on for 3–5 seconds
 
 In the dashboard, go to **Setup → My tower (MQTT)** and enter:
 
-- Broker address: `wss://<cluster-url>:8884/mqtt`
+- Broker address: `wss://<Address>:8084/mqtt`
 - Username and password: the `dashboard` credentials
 - Tower ID: `tower1`
 

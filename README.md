@@ -33,11 +33,12 @@ The [`firmware`](firmware) folder has the ESP32 firmware, ready for the Arduino 
 
 GitHub Pages is served over HTTPS, and browsers won't let an HTTPS page talk to a plain `http://` ESP32 on your home network. A cloud MQTT broker gets around this and also lets you check the tower from anywhere.
 
-**Free brokers that work:** HiveMQ Cloud (Serverless, free tier) or EMQX Cloud (Serverless). After creating a cluster:
+**Free broker:** EMQX Cloud Serverless is free for good with no credit card (1 million connection-minutes and 1 GB of data a month; the tower uses about 5% and 25% of those). HiveMQ Cloud no longer offers a free plan to new accounts. [`firmware/README.md`](firmware/README.md) has the step-by-step setup. In short:
 
-- Create one username/password for the ESP32 and one for the dashboard.
-- The ESP32 connects on port **8883** (MQTT over TLS).
-- The dashboard connects to the **WebSocket TLS** address, usually `wss://<cluster-host>:8884/mqtt`.
+- Create a Serverless deployment with a spend limit of 0, so it can never charge you.
+- Add one username/password for the ESP32 and one for the dashboard.
+- The ESP32 connects to the deployment address on port **8883** (MQTT over TLS).
+- The dashboard connects to `wss://<deployment address>:8084/mqtt`.
 
 In the dashboard go to **Setup → My tower (MQTT)**, enter the broker address, username, password and tower ID, then **Connect**.
 
@@ -52,7 +53,7 @@ All topics start with `aerotower/<towerId>/`. Payloads are JSON unless noted.
 | Topic | Direction | Retained | What it carries |
 |---|---|---|---|
 | `status` | tower → | yes | `online` or `offline` (plain text). Set `offline` as the tower's MQTT last will. |
-| `state` | tower → | yes | Latest readings and status, every 2–5 seconds. |
+| `state` | tower → | yes | Latest readings and status, every 10 seconds and straight after any change. |
 | `config` | tower → | yes | The settings the tower is actually using. Published at boot and after every change. |
 | `event` | tower → | no | Something happened: a mist, a dose, a note. |
 | `config/set` | → tower | yes | New settings from the dashboard. Retained so an offline tower gets them when it reconnects. |
