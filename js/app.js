@@ -10,6 +10,7 @@ import { lineChart } from "./charts.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = (id) => parseFloat($(id).value);
+const fx = (v, d) => (Number.isFinite(v) ? v.toFixed(d) : "–");
 const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const fmtWhen = (ts) => {
   const d = new Date(ts), today = new Date().toDateString() === d.toDateString();
@@ -261,7 +262,7 @@ function renderReadings() {
     band.style.width = (pct(bh) - pct(bl)) + "%";
     el.querySelector(".reading-note").textContent = r.note(c);
     const chip = el.querySelector(".chip");
-    if (!isFinite(v)) {
+    if (!Number.isFinite(v)) {
       el.querySelector(".reading-value").innerHTML = `–<small>${r.unit}</small>`;
       chip.dataset.s = "none"; chip.textContent = "No reading";
       mark.hidden = true;
@@ -299,8 +300,8 @@ function renderHero() {
     return;
   }
   const psi = st.pressure?.psi;
-  $("psi").textContent = isFinite(psi) ? Math.round(psi) : "––";
-  $("tankFill").style.height = (isFinite(psi) ? y(psi) : 0) + "%";
+  $("psi").textContent = Number.isFinite(psi) ? Math.round(psi) : "––";
+  $("tankFill").style.height = (Number.isFinite(psi) ? y(psi) : 0) + "%";
   $("tank").dataset.low = psi < P.lowAlarmPsi;
   const pump = $("pumpState");
   pump.dataset.on = !!st.pressure?.pump;
@@ -418,7 +419,7 @@ function renderBands() {
 
 function currentBandIndex() {
   const t = S.state?.air?.temp;
-  if (!isFinite(t)) return -1;
+  if (!Number.isFinite(t)) return -1;
   const i = draftBands.findIndex((b) => b.upTo == null || t < b.upTo);
   return i === -1 ? draftBands.length - 1 : i;
 }
@@ -444,7 +445,7 @@ function validateSchedule(cfg) {
   const m = cfg.mist, P = cfg.pressure;
   const nums = [m.fixed.onSec, m.fixed.offSec, ...Object.values(m.vpd), m.night.offMultiplier, ...Object.values(P),
     ...m.bands.flatMap((b) => [b.onSec, b.offSec, b.upTo ?? 0])];
-  if (nums.some((v) => !isFinite(v))) return "Fill in every number before sending.";
+  if (nums.some((v) => !Number.isFinite(v))) return "Fill in every number before sending.";
   for (let i = 1; i < m.bands.length - 1; i++) if (m.bands[i].upTo <= m.bands[i - 1].upTo) return "Each temperature band must start above the one before it.";
   if (m.vpd.minOffSec > m.vpd.maxOffSec) return "The shortest VPD wait must be less than the longest.";
   if (P.cutOutPsi <= P.cutInPsi) return "The pump cut-out must be higher than the cut-in.";
@@ -482,7 +483,9 @@ function renderNowPlan() {
   try { cfg = readSchedule(); } catch { cfg = S.cfg; }
   const air = { airTemp: S.state.air?.temp, humidity: S.state.air?.rh };
   const p = mistPlan(cfg, air, new Date());
-  el.innerHTML = `<span>At ${air.airTemp.toFixed(1)} °C and ${Math.round(air.humidity)}% humidity${S.dirty.schedule ? ", with your changes," : ""} the tower mists for</span>
+  const where = !Number.isFinite(air.airTemp) ? "With no air reading" : Number.isFinite(air.humidity)
+    ? `At ${fx(air.airTemp, 1)} °C and ${Math.round(air.humidity)}% humidity` : `At ${fx(air.airTemp, 1)} °C`;
+  el.innerHTML = `<span>${where}${S.dirty.schedule ? ", with your changes," : ""} the tower mists for</span>
     <strong>${p.onSec} s</strong><span>every</span><strong>${fmtDuration(p.offSec)}</strong><span>${esc(p.rule)}</span>`;
   // highlight active band
   const cur = currentBandIndex();
@@ -587,8 +590,8 @@ function renderDoseNow() {
   const el = $("doseNow");
   if (!st) { el.textContent = "Waiting for the tower's readings."; return; }
   el.innerHTML = `
-    <div><span>EC</span><strong>${st.water.ec.toFixed(2)}</strong><span>target ${d.ec.target.toFixed(2)}</span></div>
-    <div><span>pH</span><strong>${st.water.ph.toFixed(2)}</strong><span>target ${d.ph.target.toFixed(2)}</span></div>
+    <div><span>EC</span><strong>${fx(st.water?.ec, 2)}</strong><span>target ${d.ec.target.toFixed(2)}</span></div>
+    <div><span>pH</span><strong>${fx(st.water?.ph, 2)}</strong><span>target ${d.ph.target.toFixed(2)}</span></div>
     <div>${st.dosing.auto ? `<span>Next check in</span><strong>${fmtDuration(st.dosing.nextCheckInSec)}</strong>` : "<span>Auto dosing is off</span>"}</div>`;
   for (const k of PUMP_ORDER) {
     const used = st.dosing.todayMl?.[k] ?? 0, max = d.pumps[k].maxDailyMl || 1;
@@ -609,7 +612,7 @@ function wireDosing() {
     e.preventDefault();
     const cfg = readDosing(), d = cfg.dosing;
     const vals = [d.ec.target, d.ec.band, d.ph.target, d.ph.band, d.mixWaitMin, ...PUMP_ORDER.flatMap((k) => [d.pumps[k].doseMl, d.pumps[k].maxDailyMl, d.pumps[k].mlPerSec])];
-    if (vals.some((v) => !isFinite(v))) return status("dosing", "Fill in every number before sending.", "dirty");
+    if (vals.some((v) => !Number.isFinite(v))) return status("dosing", "Fill in every number before sending.", "dirty");
     send("dosing", cfg);
   });
   // Two-tap confirm for manual doses: chemicals can't be taken back out.
@@ -648,7 +651,7 @@ function renderHistory() {
     : rows.length < 2
       ? "History builds up while this page is open: one sample a minute, kept for 7 days on this device."
       : "Recorded by this browser while the page is open, one sample a minute, kept for 7 days on this device.";
-  const pts = (k, f = (v) => v) => rows.filter((r) => isFinite(r[k])).map((r) => ({ x: r.ts, y: f(r[k]) }));
+  const pts = (k, f = (v) => v) => rows.filter((r) => Number.isFinite(r[k])).map((r) => ({ x: r.ts, y: f(r[k]) }));
   const x = { min, max, kind: "time" };
   const d = S.cfg.dosing;
   const defs = {
@@ -732,7 +735,7 @@ function wireSetup() {
     const cfg = clone(S.cfg);
     cfg.towerName = $("nameInput").value.trim() || "Garden Tower";
     cfg.alerts = { airTempHigh: num("airHigh"), waterTempHigh: num("waterHigh"), levelLowPct: num("levelLow") };
-    if (Object.values(cfg.alerts).some((v) => !isFinite(v))) return status("tower", "Fill in every number before sending.", "dirty");
+    if (Object.values(cfg.alerts).some((v) => !Number.isFinite(v))) return status("tower", "Fill in every number before sending.", "dirty");
     send("tower", cfg);
   });
 

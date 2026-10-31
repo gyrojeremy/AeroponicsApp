@@ -10,7 +10,7 @@ export function svp(tempC) {
 
 /** Vapour pressure deficit of the air in kPa. */
 export function vpd(tempC, rhPct) {
-  if (!isFinite(tempC) || !isFinite(rhPct)) return NaN;
+  if (!Number.isFinite(tempC) || !Number.isFinite(rhPct)) return NaN;
   return svp(tempC) * (1 - Math.min(Math.max(rhPct, 0), 100) / 100);
 }
 
@@ -45,13 +45,13 @@ export function mistPlan(cfg, air, date = new Date()) {
   let onSec, offSec, rule;
   const t = air?.airTemp;
 
-  if (m.mode === "fixed" || !isFinite(t)) {
+  if (m.mode === "fixed" || !Number.isFinite(t)) {
     onSec = m.fixed.onSec;
     offSec = m.fixed.offSec;
-    rule = isFinite(t) ? "Fixed timing" : "Fixed timing (no air reading)";
+    rule = Number.isFinite(t) ? "Fixed timing" : "Fixed timing (no air reading)";
   } else if (m.mode === "vpd") {
     const d = vpd(t, air.humidity);
-    if (!isFinite(d)) {
+    if (!Number.isFinite(d)) {
       onSec = m.fixed.onSec; offSec = m.fixed.offSec; rule = "Fixed timing (no humidity reading)";
     } else {
       onSec = m.vpd.onSec;

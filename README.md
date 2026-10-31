@@ -20,6 +20,10 @@ It's plain HTML, CSS and JavaScript with no build step, so it runs straight from
 
 To try it on your computer first, run `python3 -m http.server` in this folder and open <http://localhost:8000>. Opening `index.html` directly from disk won't work because browsers block JavaScript modules on `file://`.
 
+## The tower firmware
+
+The [`firmware`](firmware) folder has the ESP32 firmware, ready for the Arduino IDE. It runs on a bare ESP32 DevKit V1 with simulated sensors, so you can test everything before wiring hardware. [`firmware/README.md`](firmware/README.md) walks through broker setup, uploading and the first test.
+
 ## How the pieces talk
 
 ```
@@ -126,11 +130,12 @@ The ESP32 doesn't store history. The dashboard records one sample a minute while
 index.html          page markup
 css/style.css       styles, light and dark
 js/app.js           dashboard logic and rendering
-js/schedule.js      mist timing rules (port this to the firmware)
+js/schedule.js      mist timing rules (firmware/GardenTower/schedule.h matches it)
 js/defaults.js      default settings
 js/simulator.js     the demo tower
 js/mqtt-link.js     live connection over MQTT/WebSockets
 js/charts.js        chart styling (Chart.js)
+firmware/           ESP32 firmware (see firmware/README.md)
 icons/              app icon (icon.svg is the source; PNGs are rendered from it)
 manifest.webmanifest  lets phones install the dashboard as an app
 ```
