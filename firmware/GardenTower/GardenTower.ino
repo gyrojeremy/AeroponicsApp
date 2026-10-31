@@ -416,6 +416,35 @@ void onMqttMessage(char* rawTopic, byte* payload, unsigned int length) {
 
 // ============================================================ networking
 
+const char* wifiReason(wl_status_t st) {
+  switch (st) {
+    case WL_NO_SSID_AVAIL:  return "network not found. Check the name, and that it's a 2.4 GHz network";
+    case WL_CONNECT_FAILED: return "connection refused. Usually a wrong password";
+    case WL_CONNECTION_LOST: return "connection lost";
+    case WL_IDLE_STATUS:    return "starting";
+    default:                return "still trying";
+  }
+}
+
+// List the networks the ESP32 can see. It can only see 2.4 GHz networks,
+// so a 5 GHz network will never appear here.
+void scanWifi() {
+  Serial.println("[wifi] scanning for networks...");
+  int n = WiFi.scanNetworks();
+  bool found = false;
+  for (int i = 0; i < n && i < 20; i++) {
+    bool match = WiFi.SSID(i) == WIFI_SSID;
+    found |= match;
+    Serial.printf("  %s %-32s signal %4d dBm  channel %2d%s\n", match ? ">" : " ",
+                  WiFi.SSID(i).c_str(), (int)WiFi.RSSI(i), (int)WiFi.channel(i),
+                  WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "  (open)" : "");
+  }
+  if (n <= 0) Serial.println("  no networks found");
+  if (found) Serial.printf("[wifi] found \"%s\", joining it\n", WIFI_SSID);
+  else Serial.printf("[wifi] \"%s\" is NOT in the list. It may be 5 GHz only, out of range, or the name in secrets.h may not match exactly (capitals and spaces count).\n", WIFI_SSID);
+  WiFi.scanDelete();
+}
+
 void maintainNetwork(uint32_t now) {
   bool wifiUp = WiFi.status() == WL_CONNECTED;
   if (wifiUp != wasWifiConnected) {
@@ -423,7 +452,14 @@ void maintainNetwork(uint32_t now) {
     if (wifiUp) Serial.printf("[wifi] connected, IP %s, signal %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
     else Serial.println("[wifi] disconnected, retrying in the background");
   }
-  if (!wifiUp) return;
+  if (!wifiUp) {
+    static uint32_t lastWifiMsgMs = 0;
+    if (now - lastWifiMsgMs >= 15000) {
+      lastWifiMsgMs = now;
+      Serial.printf("[wifi] not connected to \"%s\": %s\n", WIFI_SSID, wifiReason(WiFi.status()));
+    }
+    return;
+  }
 
   if (mqtt.connected()) {
     mqtt.loop();
@@ -469,6 +505,7 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  scanWifi();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   configTzTime(TIME_ZONE, "pool.ntp.org", "time.google.com");
 
