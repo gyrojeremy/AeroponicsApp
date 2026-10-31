@@ -8,6 +8,8 @@ A web dashboard for a high-pressure aeroponic (HPA) garden tower run by an ESP32
 - **History**: air and reservoir temperature, wait between mists, humidity, EC, pH and reservoir level over 1 hour to 7 days.
 - **Setup**: broker connection, tower name, alert thresholds, settings backup and restore.
 
+On a phone, open the dashboard and choose **Add to Home Screen** (Safari's share menu, or Chrome's menu) to install it with its own icon; it then opens full-screen like an app.
+
 It's plain HTML, CSS and JavaScript with no build step, so it runs straight from GitHub Pages. A built-in **demo tower** simulates the hardware, so everything works before the ESP32 is wired up.
 
 ## Put it on GitHub Pages
@@ -129,6 +131,8 @@ js/defaults.js      default settings
 js/simulator.js     the demo tower
 js/mqtt-link.js     live connection over MQTT/WebSockets
 js/charts.js        chart styling (Chart.js)
+icons/              app icon (icon.svg is the source; PNGs are rendered from it)
+manifest.webmanifest  lets phones install the dashboard as an app
 ```
 
 Libraries load from public CDNs: Chart.js 4.4.1 (jsDelivr) and MQTT.js 5.10.1 (unpkg, only when you connect a real tower).
