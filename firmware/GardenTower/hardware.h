@@ -54,6 +54,14 @@ inline void setValve(bool open) {
   writeOut(PIN_MIST_VALVE, open);
   digitalWrite(PIN_LED, open ? HIGH : LOW);
 }
+
+// Flash the LED three times at power-up so you can see it works.
+inline void ledSelfTest() {
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(PIN_LED, HIGH); delay(250);
+    digitalWrite(PIN_LED, LOW);  delay(250);
+  }
+}
 inline void setPump(bool on) { writeOut(PIN_PUMP, on); }
 inline void setDosePump(int i, bool on) { writeOut(PIN_DOSE[i], on); }
 

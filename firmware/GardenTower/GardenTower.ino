@@ -239,6 +239,7 @@ void publishState() {
 void startMist(uint32_t now, double seconds) {
   valveOpen = true;
   setValve(true);
+  Serial.printf("[valve] open for %.1f s\n", seconds);
   valveCloseAtMs = now + (uint32_t)(seconds * 1000);
   lastMistMs = now;
   lastMistEpochMs = epochMs();
@@ -256,6 +257,7 @@ void updateMist(uint32_t now) {
   if (valveOpen && reached(now, valveCloseAtMs)) {
     valveOpen = false;
     setValve(false);
+    Serial.printf("[valve] closed, next mist in %d s\n", (int)((int32_t)(nextMistAtMs - now) / 1000));
     stateDirty = true;
   }
   if (pausedUntilEpochMs && reached(now, pausedUntilMs)) {
@@ -497,6 +499,8 @@ void setup() {
   if (anySimulated()) Serial.println("Some sensors are simulated (see hardware.h). The blue LED shows the mist valve.");
 
   setupOutputs();
+  Serial.printf("LED self-test: the LED on GPIO %d should flash 3 times now.\n", PIN_LED);
+  ledSelfTest();
   randomSeed(esp_random());
 
   prefs.begin("tower", false);
