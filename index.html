@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Garden Tower</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Dashboard for a high-pressure aeroponic garden tower: misting, accumulator pressure, nutrients and pH.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M7 7h10M6 12h12M7 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="7" r="1.3" fill="currentColor"/><circle cx="20" cy="12" r="1.3" fill="currentColor"/><circle cx="4" cy="17" r="1.3" fill="currentColor"/></svg>
+      <span id="towerName">Garden Tower</span>
+    </div>
+    <button class="link-pill" id="linkPill" type="button" data-state="demo">
+      <span class="dot" aria-hidden="true"></span><span id="linkText">Demo tower</span>
+    </button>
+  </div>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>Tower</a>
+    <a href="#schedule" data-view="schedule"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Schedule</a>
+    <a href="#dosing" data-view="dosing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>Dosing</a>
+    <a href="#history" data-view="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M5 15l4-5 4 3 6-7"/></svg>History</a>
+    <a href="#setup" data-view="setup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h4M15 12h4M12 5v4M12 15v4"/><circle cx="12" cy="12" r="3"/></svg>Setup</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<!-- ============ TOWER ============ -->
+<section class="view" id="view-overview" aria-labelledby="h-overview">
+  <h1 class="sr-only" id="h-overview">Tower</h1>
+
+  <div class="demo-note" id="demoNote">You're looking at a simulated tower. Connect your ESP32 in <a href="#setup">Setup</a>.</div>
+
+  <div class="mist-hero">
+    <div class="mist-main">
+      <p class="mist-state" id="mistState">Next mist in</p>
+      <p class="countdown" id="countdown" aria-live="off">–:––</p>
+      <p class="mist-plan" id="mistPlan">Waiting for the tower…</p>
+      <div class="actions">
+        <button class="btn primary" id="btnMist" type="button">Mist now</button>
+        <button class="btn" id="btnPause" type="button">Pause 30 min</button>
+      </div>
+    </div>
+
+    <figure class="accumulator" aria-labelledby="accCap">
+      <div class="tank" id="tank">
+        <div class="tank-fill" id="tankFill"></div>
+        <div class="tank-mark" id="markOut"><span>cut-out</span></div>
+        <div class="tank-mark" id="markIn"><span>cut-in</span></div>
+      </div>
+      <figcaption id="accCap">
+        <span class="psi"><strong id="psi">––</strong> psi</span>
+        <span class="pump" id="pumpState">Pump idle</span>
+      </figcaption>
+    </figure>
+
+    <figure class="pulses">
+      <figcaption>
+        <span>Mist pulses, last hour</span>
+        <span id="pulseCount" class="muted"></span>
+      </figcaption>
+      <svg id="pulseSvg" viewBox="0 0 600 64" preserveAspectRatio="none" role="img" aria-label="Mist pulses over the last hour"></svg>
+      <div class="pulse-axis"><span>60 min ago</span><span>30</span><span>now</span></div>
+    </figure>
+  </div>
+
+  <div class="alerts" id="alerts" aria-live="polite"></div>
+
+  <h2 class="section-h">Readings</h2>
+  <div class="readings" id="readings"></div>
+
+  <h2 class="section-h">Activity</h2>
+  <ol class="activity" id="activity"></ol>
+</section>
+
+<!-- ============ SCHEDULE ============ -->
+<section class="view" id="view-schedule" aria-labelledby="h-schedule" hidden>
+  <div class="view-head">
+    <h1 id="h-schedule">Mist schedule</h1>
+    <p class="lede">How long each mist lasts and how long the tower waits before the next one. The tower keeps running its saved schedule even when this page is closed.</p>
+  </div>
+
+  <div class="now-plan" id="nowPlan"></div>
+
+  <form id="scheduleForm" class="stack" novalidate>
+    <fieldset class="panel">
+      <legend>Timing</legend>
+      <div class="segmented" role="radiogroup" aria-label="Timing mode">
+        <label><input type="radio" name="mode" value="fixed" id="mode-fixed"><span>Fixed</span></label>
+        <label><input type="radio" name="mode" value="bands" id="mode-bands"><span>By temperature</span></label>
+        <label><input type="radio" name="mode" value="vpd" id="mode-vpd"><span>By VPD</span></label>
+      </div>
+
+      <div data-mode="fixed" class="mode-body">
+        <p class="hint">Same timing all day, like your old potentiometer setup.</p>
+        <div class="row">
+          <label class="field" for="fixedOn">Mist for <span class="unit-wrap"><input type="number" id="fixedOn" min="1" max="30" step="0.5" inputmode="decimal"><span>s</span></span></label>
+          <label class="field" for="fixedOff">Then wait <span class="unit-wrap"><input type="number" id="fixedOff" min="30" max="3600" step="5" inputmode="numeric"><span>s</span></span></label>
+        </div>
+      </div>
+
+      <div data-mode="bands" class="mode-body">
+        <p class="hint">Hotter air dries roots faster, so warmer bands mist more often. The tower uses the first band the air temperature is below.</p>
+        <div class="table-scroll">
+          <table class="bands">
+            <thead><tr><th scope="col">Air temperature</th><th scope="col">Mist for (s)</th><th scope="col">Then wait (s)</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
+            <tbody id="bandRows"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn small" id="addBand">Add band</button>
+      </div>
+
+      <div data-mode="vpd" class="mode-body">
+        <p class="hint">VPD combines temperature and humidity into one measure of how thirsty the air is. Hot, dry air (high VPD) shortens the wait. The wait is <em>base wait × reference VPD ÷ current VPD</em>, kept between the limits.</p>
+        <div class="row">
+          <label class="field" for="vpdOn">Mist for <span class="unit-wrap"><input type="number" id="vpdOn" min="1" max="30" step="0.5"><span>s</span></span></label>
+          <label class="field" for="vpdBase">Base wait <span class="unit-wrap"><input type="number" id="vpdBase" min="30" max="3600" step="5"><span>s</span></span></label>
+          <label class="field" for="vpdRef">Reference VPD <span class="unit-wrap"><input type="number" id="vpdRef" min="0.2" max="3" step="0.05"><span>kPa</span></span></label>
+          <label class="field" for="vpdMin">Shortest wait <span class="unit-wrap"><input type="number" id="vpdMin" min="30" max="3600" step="5"><span>s</span></span></label>
+          <label class="field" for="vpdMax">Longest wait <span class="unit-wrap"><input type="number" id="vpdMax" min="30" max="3600" step="5"><span>s</span></span></label>
+        </div>
+      </div>
+
+      <figure class="curve">
+        <figcaption>Wait between mists across air temperature <span class="muted" id="curveNote"></span></figcaption>
+        <div class="chart-box short"><canvas id="curveChart" aria-label="Wait between mists by air temperature"></canvas></div>
+      </figure>
+    </fieldset>
+
+    <fieldset class="panel">
+      <legend>Night</legend>
+      <label class="switch" for="nightOn"><input type="checkbox" id="nightOn"><span>Wait longer between mists at night</span></label>
+      <div class="row">
+        <label class="field" for="nightStart">From <input type="time" id="nightStart"></label>
+        <label class="field" for="nightEnd">Until <input type="time" id="nightEnd"></label>
+        <label class="field" for="nightMult">Multiply wait by <span class="unit-wrap"><input type="number" id="nightMult" min="1" max="6" step="0.25"><span>×</span></span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="panel">
+      <legend>Accumulator and pump</legend>
+      <p class="hint">The pump refills the accumulator when pressure drops to the cut-in and stops at the cut-out. Match these to your pressure switch.</p>
+      <div class="row">
+        <label class="field" for="cutIn">Cut-in <span class="unit-wrap"><input type="number" id="cutIn" min="20" max="150" step="1"><span>psi</span></span></label>
+        <label class="field" for="cutOut">Cut-out <span class="unit-wrap"><input type="number" id="cutOut" min="30" max="160" step="1"><span>psi</span></span></label>
+        <label class="field" for="lowAlarm">Low-pressure alert <span class="unit-wrap"><input type="number" id="lowAlarm" min="10" max="150" step="1"><span>psi</span></span></label>
+        <label class="field" for="maxRun">Longest pump run <span class="unit-wrap"><input type="number" id="maxRun" min="10" max="900" step="5"><span>s</span></span></label>
+      </div>
+    </fieldset>
+
+    <div class="save-bar">
+      <span class="save-status" id="schedStatus" role="status"></span>
+      <button type="button" class="btn" id="schedReset">Discard changes</button>
+      <button type="submit" class="btn primary" id="schedSave">Send to tower</button>
+    </div>
+  </form>
+</section>
+
+<!-- ============ DOSING ============ -->
+<section class="view" id="view-dosing" aria-labelledby="h-dosing" hidden>
+  <div class="view-head">
+    <h1 id="h-dosing">Nutrients and pH</h1>
+    <p class="lede">Auto dosing corrects pH first, then nutrient strength, with one small dose per check so the reservoir has time to mix.</p>
+  </div>
+
+  <div class="dose-now" id="doseNow"></div>
+
+  <form id="dosingForm" class="stack" novalidate>
+    <fieldset class="panel">
+      <legend>Targets</legend>
+      <label class="switch" for="autoDose"><input type="checkbox" id="autoDose"><span>Dose automatically</span></label>
+      <div class="row">
+        <label class="field" for="ecTarget">EC target <span class="unit-wrap"><input type="number" id="ecTarget" min="0.2" max="4" step="0.05"><span>mS/cm</span></span></label>
+        <label class="field" for="ecBand">EC tolerance ± <span class="unit-wrap"><input type="number" id="ecBand" min="0.02" max="1" step="0.01"><span>mS/cm</span></span></label>
+        <label class="field" for="phTarget">pH target <input type="number" id="phTarget" min="4" max="8" step="0.05"></label>
+        <label class="field" for="phBand">pH tolerance ± <input type="number" id="phBand" min="0.05" max="1" step="0.05"></label>
+        <label class="field" for="mixWait">Wait between doses <span class="unit-wrap"><input type="number" id="mixWait" min="2" max="120" step="1"><span>min</span></span></label>
+      </div>
+    </fieldset>
+
+    <div class="pumps" id="pumps"></div>
+
+    <div class="save-bar">
+      <span class="save-status" id="doseStatus" role="status"></span>
+      <button type="button" class="btn" id="doseReset">Discard changes</button>
+      <button type="submit" class="btn primary">Send to tower</button>
+    </div>
+  </form>
+
+  <h2 class="section-h">Dose log</h2>
+  <ol class="activity" id="doseLog"></ol>
+</section>
+
+<!-- ============ HISTORY ============ -->
+<section class="view" id="view-history" aria-labelledby="h-history" hidden>
+  <div class="view-head row-between">
+    <h1 id="h-history">History</h1>
+    <div class="segmented compact" role="radiogroup" aria-label="Time range">
+      <label><input type="radio" name="range" value="1" id="range-1"><span>1 h</span></label>
+      <label><input type="radio" name="range" value="6" id="range-6"><span>6 h</span></label>
+      <label><input type="radio" name="range" value="24" id="range-24" checked><span>24 h</span></label>
+      <label><input type="radio" name="range" value="168" id="range-168"><span>7 d</span></label>
+    </div>
+  </div>
+  <p class="hint" id="historyNote"></p>
+  <div class="charts">
+    <figure class="chart-card wide"><figcaption><span>Temperature</span><span class="legend"><i class="sw s1"></i>Air <i class="sw s2"></i>Reservoir</span></figcaption><div class="chart-box"><canvas id="chTemp"></canvas></div></figure>
+    <figure class="chart-card wide"><figcaption><span>Wait between mists</span><span class="muted">minutes</span></figcaption><div class="chart-box"><canvas id="chWait"></canvas></div></figure>
+    <figure class="chart-card"><figcaption><span>Humidity</span><span class="muted">%</span></figcaption><div class="chart-box"><canvas id="chRh"></canvas></div></figure>
+    <figure class="chart-card"><figcaption><span>EC</span><span class="muted">mS/cm</span></figcaption><div class="chart-box"><canvas id="chEc"></canvas></div></figure>
+    <figure class="chart-card"><figcaption><span>pH</span></figcaption><div class="chart-box"><canvas id="chPh"></canvas></div></figure>
+    <figure class="chart-card"><figcaption><span>Reservoir level</span><span class="muted">%</span></figcaption><div class="chart-box"><canvas id="chLevel"></canvas></div></figure>
+  </div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section class="view" id="view-setup" aria-labelledby="h-setup" hidden>
+  <div class="view-head">
+    <h1 id="h-setup">Setup</h1>
+  </div>
+
+  <form id="connForm" class="stack" novalidate>
+    <fieldset class="panel">
+      <legend>Connection</legend>
+      <div class="segmented" role="radiogroup" aria-label="Connection">
+        <label><input type="radio" name="conn" value="demo" id="conn-demo"><span>Demo tower</span></label>
+        <label><input type="radio" name="conn" value="mqtt" id="conn-mqtt"><span>My tower (MQTT)</span></label>
+      </div>
+      <div id="mqttFields" class="stack">
+        <p class="hint">Your ESP32 and this page both connect to an MQTT broker. Use the broker's secure WebSocket address, which usually ends in <code>:8884/mqtt</code>.</p>
+        <label class="field" for="brokerUrl">Broker address <input type="url" id="brokerUrl" placeholder="wss://xxxxxxxx.s1.eu.hivemq.cloud:8884/mqtt" autocomplete="off" spellcheck="false"></label>
+        <div class="row">
+          <label class="field" for="brokerUser">Username <input type="text" id="brokerUser" autocomplete="username" spellcheck="false"></label>
+          <label class="field" for="brokerPass">Password <input type="password" id="brokerPass" autocomplete="current-password"></label>
+          <label class="field" for="towerId">Tower ID <input type="text" id="towerId" placeholder="tower1" spellcheck="false" pattern="[A-Za-z0-9_\-]+"></label>
+        </div>
+        <label class="switch" for="rememberPass"><input type="checkbox" id="rememberPass"><span>Remember the password on this device</span></label>
+      </div>
+      <p class="form-error" id="connError" role="alert" hidden></p>
+      <div class="save-bar">
+        <span class="save-status" id="connStatus" role="status"></span>
+        <button type="submit" class="btn primary" id="connBtn">Connect</button>
+      </div>
+    </fieldset>
+  </form>
+
+  <form id="towerForm" class="stack" novalidate>
+    <fieldset class="panel">
+      <legend>Tower and alerts</legend>
+      <div class="row">
+        <label class="field" for="nameInput">Tower name <input type="text" id="nameInput" maxlength="40"></label>
+        <label class="field" for="airHigh">Hot air alert above <span class="unit-wrap"><input type="number" id="airHigh" min="15" max="50" step="0.5"><span>°C</span></span></label>
+        <label class="field" for="waterHigh">Warm reservoir alert above <span class="unit-wrap"><input type="number" id="waterHigh" min="15" max="35" step="0.5"><span>°C</span></span></label>
+        <label class="field" for="levelLow">Low reservoir alert below <span class="unit-wrap"><input type="number" id="levelLow" min="5" max="80" step="1"><span>%</span></span></label>
+      </div>
+      <div class="save-bar">
+        <span class="save-status" id="towerStatus" role="status"></span>
+        <button type="submit" class="btn primary">Send to tower</button>
+      </div>
+    </fieldset>
+  </form>
+
+  <fieldset class="panel">
+    <legend>Backup</legend>
+    <p class="hint">Copy the tower's settings as JSON to keep a backup, or paste a backup to restore it.</p>
+    <textarea id="cfgJson" rows="6" spellcheck="false" aria-label="Settings JSON"></textarea>
+    <p class="form-error" id="cfgError" role="alert" hidden></p>
+    <div class="save-bar">
+      <span class="save-status" id="cfgStatus" role="status"></span>
+      <button type="button" class="btn" id="cfgCopy">Copy settings</button>
+      <button type="button" class="btn primary" id="cfgRestore">Restore pasted settings</button>
+    </div>
+  </fieldset>
+
+  <dl class="device" id="deviceInfo"></dl>
+</section>
+
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
